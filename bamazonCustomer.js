@@ -5,7 +5,7 @@ const connection = mysql.createConnection({
     host: "localhost",
     port: 3306,
     user: "root",
-    password: "root1234",
+    password: "",
     database: "bamazonDb"
 });
 
@@ -108,6 +108,7 @@ function customer() {
         });
 }
 
+<<<<<<< HEAD
 function displayData() {
     const query = 'SELECT * FROM products';
 
@@ -133,3 +134,21 @@ Quantity: ${res[i].stock_quantity} \n`;
     };
 
 init();
+=======
+init();
+
+function displayData(data){
+    console.table(data);
+    // const array = [{Item_Id: data.item_id, Name: data.product_id, 
+    //     Department: data.department_name,
+    //     Price: data.price, Quantity: data.stock_quantity}];
+    // for(let i = 0; i < data.length; i++){
+    //     // const transformed = array.reduce((acc, {Item_Id, ...x}) => { 
+    //     //     acc[Item_Id] = x; return acc}, {});
+    //     console.table(data);
+    // }
+
+    
+    // console.table(array);
+}
+>>>>>>> 45439a4d54dd2b84c0311ebc21802672e9a2090b
