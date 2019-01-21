@@ -9,108 +9,127 @@ const connection = mysql.createConnection({
     database: "bamazonDb"
 });
 
-// Function to start database connection
-function startConnection(){
-    connection.connect(function(err){
-        if(err) throw err;
-        console.log(`Database connected on thread: ${connection.threadId}`);
-    });
+// Function to validate that user input is a positive number
+function validate(value) {
+    let number = Number.isInteger(parseFloat(value));
+    let sign = Math.sign(value);
+
+    if (number && (sign === 1)) {
+        return true;
+    } else {
+        return "Enter a number greater than 0";
+    }
 }
 
-// FUnction to close database connection
-function closeConnection(){
-    connection.end();
-    console.log("Information retrieved. Have a good day!");
-};
-
 // Function to welcome user and ask what account they will be using
-function init(){
+function init() {
+    displayData();
     inquirer.prompt({
-        name: "welcome",
-        message: `Welcome to Bamazon Services!
+            name: "welcome",
+            message: `Welcome to Bamazon Services!
 The greatest selection of almost everything in the world!
 Which user are you?`,
-        type: "list",
-        choices: ["Customer", "Manager", "Supervisor", "End Program"]
-    })
-    .then((data) =>{
-        switch (data.welcome){
-            case "Customer":
-                customer();
-                break;
-            case "Manager":
-                manager();
-                break;
-            case "Supervisor":
-                supervisor();
-                break;
-            case "End Program":
-                connection.end();
-                return;
-        }
-    })
+            type: "list",
+            choices: ["Customer", "Manager", "Supervisor", "End Program"]
+        })
+        .then((data) => {
+            switch (data.welcome) {
+                case "Customer":
+                    customer();
+                    break;
+                case "Manager":
+                    manager();
+                    break;
+                case "Supervisor":
+                    supervisor();
+                    break;
+                case "End Program":
+                    connection.end();
+                    return;
+            }
+        })
 }
 
 // Function that runs the customer facing prompts
-function customer(){
-    startConnection();
-    connection.query('SELECT * FROM products', (err, res) => {
-        if(err){
-            console.log("There was an error.");
-        }
-        displayData(res);
-        closeConnection();
-        inquirer.prompt([{
-            name: "buy",
-            type: "input",
-            message: "What is the Item Id of the product you would like to buy?"
-        },
-        {
-            name: "quantity",
-            type: "input",
-            message: "How many of that product would you like to buy?"
-        }])
+function customer() {
+    inquirer.prompt([{
+                name: "item_id",
+                type: "input",
+                message: "What is the Item Id of the product you would like to buy?",
+                validate: validate
+
+            },
+            {
+                name: "stock_quantity",
+                type: "input",
+                message: "How many of that product would you like to buy?",
+                validate: validate
+            }
+        ])
         .then((answer) => {
-            let productId = answer.buy;
-            let productQuantity = answer.quantity;
-            let productPrice ;
-            let priceUpdate ;
-            if(!res[productId - 1].price){
-                productPrice = "That item is not in stock or there is insufficient quantity.";
-                priceUpdate = "That item is not in stock or there is insufficient quantity.";
-            } else {
-                productPrice = res[productId - 1].price;
-                priceUpdate = res[productId - 1].price * productQuantity;
-            }
-            
-            let userChoice = `
-You have chosen:
-Name: ${res[productId - 1].product_name}
-Price: ${productPrice}
-Quantity: ${productQuantity}
-\n
-New Price: ${priceUpdate}`;
-            if((productId - 1 ) < 0 || (productId - 1 ) > res[9].item_id && productQuantity < res[productId - 1].stock_quantity || productQuantity > res[productId - 1].stock_quantity){
-                userChoice = "That item is not in stock or there is insufficient quantity.";
-            }
-                console.log(userChoice);
+            let item = answer.item_id;
+            let quantity = answer.stock_quantity;
+            let query = 'SELECT * FROM products WHERE ?';
+
+            connection.query(query, ({item_id: item}), (err, res) => {
+                if (err) throw err;
+                console.log(`Database connected on thread: ${connection.threadId}`);
+
+                if (res.length === 0) {
+                    console.log("Item ID not valid. Enter a valid ID number.");
+                    displayData();
+                } else {
+                    const productInfo = res[0];
+
+                    if(quantity <= productInfo.stock_quantity){
+                        console.log("Your order is being placed!");
+
+                        const updateQuery = 'UPDATE products SET stock_quantity = ' + (productInfo.stock_quantity - quantity) + 'WHERE item_id = ' + item;
+
+                        connection.query(updateQuery, function(err, res){
+                            if(err) throw err;
+
+                            console.log("Order has been placed!")
+                            console.log("Total price is: $" + productInfo.price * quantity);
+                            console.log("Thank you for shopping with Bamazon!");
+                            console.log("\n-----------------------------------------------------------------\n");
+
+                            connection.end();
+                        })
+                    } else {
+                        console.log('Insufficient quantity in stock to proceed with order.');
+					    console.log('Update order.');
+					    console.log("\n---------------------------------------------------------------------\n");
+
+					displayData();
+                    }
+                }
+            });
         });
-    });
 }
+
+function displayData() {
+    const query = 'SELECT * FROM products';
+
+    connection.query(query, (err, res) => {
+            if (err) throw err;
+            console.log(`Database connected on thread: ${connection.threadId}`);
+
+            console.log("Bamazon Inventory: ");
+            console.log("----------------------------------\n");
+
+            let dataOutput = '';
+            for (let i = 0; i < res.length; i++) {
+                dataOutput = `
+Item ID: ${res[i].item_id}
+Product Name: ${res[i].product_name}
+Department: ${res[i].department_name}
+Price: $${res[i].price}
+Quantity: ${res[i].stock_quantity} \n`;
+                console.log(dataOutput);
+            };
+            console.log("----------------------------------\n");
+        });
+    };
 
 init();
-
-function displayData(data){
-    console.table(data);
-    // const array = [{Item_Id: data.item_id, Name: data.product_id, 
-    //     Department: data.department_name,
-    //     Price: data.price, Quantity: data.stock_quantity}];
-    // for(let i = 0; i < data.length; i++){
-    //     // const transformed = array.reduce((acc, {Item_Id, ...x}) => { 
-    //     //     acc[Item_Id] = x; return acc}, {});
-    //     console.table(data);
-    // }
-
-    
-    // console.table(array);
-}
