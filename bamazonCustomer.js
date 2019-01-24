@@ -1,5 +1,21 @@
 const mysql = require("mysql");
 const inquirer = require("inquirer");
+const Table = require("cli-table");
+const colors = require("colors");
+const Manager = require("./bamazonManager.js");
+
+colors.setTheme({
+    silly: 'rainbow',
+    input: 'grey',
+    verbose: 'cyan',
+    prompt: 'grey',
+    info: 'green',
+    data: 'grey',
+    help: 'cyan',
+    warn: 'yellow',
+    debug: 'blue',
+    error: 'red'
+})
 
 const connection = mysql.createConnection({
     host: "localhost",
@@ -23,7 +39,6 @@ function validate(value) {
 
 // Function to welcome user and ask what account they will be using
 function init() {
-    displayData();
     inquirer.prompt({
             name: "welcome",
             message: `Welcome to Bamazon Services!
@@ -35,10 +50,10 @@ Which user are you?`,
         .then((data) => {
             switch (data.welcome) {
                 case "Customer":
-                    customer();
+                    showInfo();
                     break;
                 case "Manager":
-                    manager();
+                    Manager();
                     break;
                 case "Supervisor":
                     supervisor();
@@ -48,6 +63,12 @@ Which user are you?`,
                     return;
             }
         })
+}
+
+// Function to breakup the asynchronous portion of inquirer and display data
+function showInfo(){
+    displayData();
+    setTimeout(customer, 2000);
 }
 
 // Function that runs the customer facing prompts
@@ -73,82 +94,99 @@ function customer() {
 
             connection.query(query, ({item_id: item}), (err, res) => {
                 if (err) throw err;
-                console.log(`Database connected on thread: ${connection.threadId}`);
+                console.log(`\n
+Database connected on thread: ${connection.threadId}`);
 
                 if (res.length === 0) {
-                    console.log("Item ID not valid. Enter a valid ID number.");
-                    displayData();
+                    console.log(colors.error("Item ID not valid. Enter a valid ID number."));
+                    customer();
                 } else {
                     const productInfo = res[0];
 
                     if(quantity <= productInfo.stock_quantity){
-                        console.log("Your order is being placed!");
+                        console.log(colors.error("Your order is being placed!"));
 
-                        const updateQuery = 'UPDATE products SET stock_quantity = ' + (productInfo.stock_quantity - quantity) + 'WHERE item_id = ' + item;
+                        const updateQuery = `UPDATE products SET stock_quantity = ${productInfo.stock_quantity - quantity} WHERE item_id =  + ${item}`;
 
                         connection.query(updateQuery, function(err, res){
                             if(err) throw err;
 
-                            console.log("Order has been placed!")
-                            console.log("Total price is: $" + productInfo.price * quantity);
-                            console.log("Thank you for shopping with Bamazon!");
-                            console.log("\n-----------------------------------------------------------------\n");
+                            console.log(colors.info(`
+Order has been placed!
+Total price is: $${productInfo.price * quantity}
+Thank you for shopping with Bamazon!
+\n-----------------------------------------------------------------\n`));
 
-                            connection.end();
+                            tryAgain();
                         })
                     } else {
-                        console.log('Insufficient quantity in stock to proceed with order.');
-					    console.log('Update order.');
-					    console.log("\n---------------------------------------------------------------------\n");
+                        console.log(colors.error(`\n
+Insufficient quantity in stock to proceed with order.
+Update order.
+\n---------------------------------------------------------------------\n`));
 
-					displayData();
+					customer();
                     }
                 }
             });
         });
 }
 
-<<<<<<< HEAD
+function tryAgain(){
+    inquirer.prompt([{
+        name: "question",
+        type: "list",
+        message: "Would you like to buy another item or end program?",
+        choices: ["Buy", "End Program"]
+
+    }])
+    .then((answer) => {
+        switch (answer.question){
+            case "Buy":
+                init();
+                break;
+            case "End Program":
+                connection.end();
+                return;
+        }
+    })
+};
+
 function displayData() {
     const query = 'SELECT * FROM products';
 
     connection.query(query, (err, res) => {
             if (err) throw err;
+            const table = new Table({
+                head: ['Item ID', "Product Name", "Price", "Quantity"],
+                style: {
+                    head: ['red'],
+                    compact: false,
+                    colAligns: ['center']
+                }
+            })
             console.log(`Database connected on thread: ${connection.threadId}`);
 
-            console.log("Bamazon Inventory: ");
-            console.log("----------------------------------\n");
-
-            let dataOutput = '';
+            console.log(colors.warn(`\n
+Bamazon Inventory:
+--------------------------------------------------\n`));
+//             let dataOutput = '';
             for (let i = 0; i < res.length; i++) {
-                dataOutput = `
-Item ID: ${res[i].item_id}
-Product Name: ${res[i].product_name}
-Department: ${res[i].department_name}
-Price: $${res[i].price}
-Quantity: ${res[i].stock_quantity} \n`;
-                console.log(dataOutput);
+                table.push(
+                    [res[i].item_id, res[i].product_name, res[i].price, res[i].stock_quantity]
+                );
+                // console.log(colors.verbose(table.toString()));
+//                 dataOutput = `
+// Item ID: ${res[i].item_id}
+// Product Name: ${res[i].product_name}
+// Department: ${res[i].department_name}
+// Price: $${res[i].price}
+// Quantity: ${res[i].stock_quantity} \n`;
+//                 console.log(dataOutput);
             };
-            console.log("----------------------------------\n");
+            console.log(colors.verbose(table.toString()));
+            console.log(colors.warn("----------------------------------------------------\n"));
         });
     };
 
 init();
-=======
-init();
-
-function displayData(data){
-    console.table(data);
-    // const array = [{Item_Id: data.item_id, Name: data.product_id, 
-    //     Department: data.department_name,
-    //     Price: data.price, Quantity: data.stock_quantity}];
-    // for(let i = 0; i < data.length; i++){
-    //     // const transformed = array.reduce((acc, {Item_Id, ...x}) => { 
-    //     //     acc[Item_Id] = x; return acc}, {});
-    //     console.table(data);
-    // }
-
-    
-    // console.table(array);
-}
->>>>>>> 45439a4d54dd2b84c0311ebc21802672e9a2090b
