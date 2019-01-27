@@ -97,8 +97,8 @@ function createDepartment() {
         {
             name: "over_head_cost",
             type: "input",
-            message: "What is the over head cost for the department?",
-            validate: validate
+            message: "What is the over head cost for the department?"
+            // validate: validate
         }
     ])
     .then((answers) => {

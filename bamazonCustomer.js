@@ -142,7 +142,7 @@ function updateSales(price, item){
     connection.query(query, (err,res) => {
         if(err) console.log("Error: " + err);
 
-        console.log(colors.info("Product Sales updated!"))
+        // console.log(colors.info("Product Sales updated!"))
     })
 }
 

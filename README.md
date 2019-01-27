@@ -42,4 +42,4 @@ N/A
 
 
 # Preview
-![](https://github.com/jhernandeztorres/BC-Constructor-Word-Guess/blob/master/wordGuess.gif)
+![](https://github.com/jhernandeztorres/BC-Bamazon/blob/master/bamazonGif.gif)
