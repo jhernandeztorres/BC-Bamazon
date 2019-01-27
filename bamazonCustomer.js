@@ -3,6 +3,9 @@ const inquirer = require("inquirer");
 const Table = require("cli-table");
 const colors = require("colors");
 const Manager = require("./bamazonManager.js");
+const Supervisor = require("./bamazonSupervisor.js");
+
+let currentDepartment;
 
 colors.setTheme({
     silly: 'rainbow',
@@ -56,7 +59,7 @@ Which user are you?`,
                     Manager();
                     break;
                 case "Supervisor":
-                    supervisor();
+                    Supervisor();
                     break;
                 case "End Program":
                     connection.end();
@@ -93,7 +96,7 @@ function customer() {
             let query = 'SELECT * FROM products WHERE ?';
 
             connection.query(query, ({item_id: item}), (err, res) => {
-                if (err) throw err;
+                if (err) console.log("Error: "+ err);
                 console.log(`\n
 Database connected on thread: ${connection.threadId}`);
 
@@ -102,21 +105,22 @@ Database connected on thread: ${connection.threadId}`);
                     customer();
                 } else {
                     const productInfo = res[0];
-
+                    currentDepartment = res[0].department_name;
                     if(quantity <= productInfo.stock_quantity){
                         console.log(colors.error("Your order is being placed!"));
 
-                        const updateQuery = `UPDATE products SET stock_quantity = ${productInfo.stock_quantity - quantity} WHERE item_id =  + ${item}`;
+                        const updateQuery = `UPDATE products SET stock_quantity = ${productInfo.stock_quantity - quantity} WHERE item_id = ${item}`;
 
-                        connection.query(updateQuery, function(err, res){
-                            if(err) throw err;
+                        connection.query(updateQuery, function(err, result){
+                            if(err) console.log("Error: " + err);
 
                             console.log(colors.info(`
 Order has been placed!
 Total price is: $${productInfo.price * quantity}
 Thank you for shopping with Bamazon!
 \n-----------------------------------------------------------------\n`));
-
+                            
+                            updateSales((productInfo.price * quantity), item);
                             tryAgain();
                         })
                     } else {
@@ -130,6 +134,16 @@ Update order.
                 }
             });
         });
+}
+
+function updateSales(price, item){
+    const query = `UPDATE products SET product_sales_column = ${price} WHERE item_id = ${item}`;
+
+    connection.query(query, (err,res) => {
+        if(err) console.log("Error: " + err);
+
+        console.log(colors.info("Product Sales updated!"))
+    })
 }
 
 function tryAgain(){
@@ -156,7 +170,7 @@ function displayData() {
     const query = 'SELECT * FROM products';
 
     connection.query(query, (err, res) => {
-            if (err) throw err;
+            if (err) console.log("Error: " + err);
             const table = new Table({
                 head: ['Item ID', "Product Name", "Price", "Quantity"],
                 style: {
@@ -170,19 +184,10 @@ function displayData() {
             console.log(colors.warn(`\n
 Bamazon Inventory:
 --------------------------------------------------\n`));
-//             let dataOutput = '';
             for (let i = 0; i < res.length; i++) {
                 table.push(
                     [res[i].item_id, res[i].product_name, res[i].price, res[i].stock_quantity]
                 );
-                // console.log(colors.verbose(table.toString()));
-//                 dataOutput = `
-// Item ID: ${res[i].item_id}
-// Product Name: ${res[i].product_name}
-// Department: ${res[i].department_name}
-// Price: $${res[i].price}
-// Quantity: ${res[i].stock_quantity} \n`;
-//                 console.log(dataOutput);
             };
             console.log(colors.verbose(table.toString()));
             console.log(colors.warn("----------------------------------------------------\n"));
